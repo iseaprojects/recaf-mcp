@@ -14,28 +14,60 @@ import me.naptila.recafmcp.mcp.internal.HealthHandler;
 import me.naptila.recafmcp.mcp.internal.RecafHeadlessServicesProbe;
 import me.naptila.recafmcp.mcp.internal.RecafSaveWorkspaceHandler;
 import me.naptila.recafmcp.mcp.internal.ShutdownHandler;
+import me.naptila.recafmcp.mcp.tools.AddAndroidMemberTool;
+import me.naptila.recafmcp.mcp.tools.AddAnnotationTool;
+import me.naptila.recafmcp.mcp.tools.AddClassTool;
+import me.naptila.recafmcp.mcp.tools.AddFieldTool;
+import me.naptila.recafmcp.mcp.tools.AddMethodTool;
+import me.naptila.recafmcp.mcp.tools.AddSupportingResourceTool;
 import me.naptila.recafmcp.mcp.tools.ApplyMappingsTool;
 import me.naptila.recafmcp.mcp.tools.CallGraphTool;
 import me.naptila.recafmcp.mcp.tools.DecompileClassTool;
+import me.naptila.recafmcp.mcp.tools.DuplicateClassTool;
 import me.naptila.recafmcp.mcp.tools.ExportDecompiledSourcesTool;
 import me.naptila.recafmcp.mcp.tools.ExportMappingsTool;
+import me.naptila.recafmcp.mcp.tools.ExtractEntryTool;
 import me.naptila.recafmcp.mcp.tools.GetClassBytecodeTool;
+import me.naptila.recafmcp.mcp.tools.GetClassInfoTool;
+import me.naptila.recafmcp.mcp.tools.GetInheritanceTool;
 import me.naptila.recafmcp.mcp.tools.GetMethodAssemblyTool;
+import me.naptila.recafmcp.mcp.tools.GetMethodBytecodeTool;
 import me.naptila.recafmcp.mcp.tools.GetRecafScriptHelpTool;
+import me.naptila.recafmcp.mcp.tools.ListAnnotationsTool;
 import me.naptila.recafmcp.mcp.tools.ListClassesTool;
+import me.naptila.recafmcp.mcp.tools.ListDecompilersTool;
 import me.naptila.recafmcp.mcp.tools.ListFilesTool;
+import me.naptila.recafmcp.mcp.tools.ListMembersTool;
+import me.naptila.recafmcp.mcp.tools.ListPackagesTool;
+import me.naptila.recafmcp.mcp.tools.ListSupportingResourcesTool;
 import me.naptila.recafmcp.mcp.tools.PatchClassTool;
 import me.naptila.recafmcp.mcp.tools.PatchInstructionsTool;
 import me.naptila.recafmcp.mcp.tools.ReadFileTool;
+import me.naptila.recafmcp.mcp.tools.RemoveAndroidMemberTool;
+import me.naptila.recafmcp.mcp.tools.RemoveAnnotationTool;
+import me.naptila.recafmcp.mcp.tools.RemoveClassTool;
+import me.naptila.recafmcp.mcp.tools.RemoveFileTool;
+import me.naptila.recafmcp.mcp.tools.RemoveMemberTool;
+import me.naptila.recafmcp.mcp.tools.RemoveSupportingResourceTool;
+import me.naptila.recafmcp.mcp.tools.RenamePackageTool;
 import me.naptila.recafmcp.mcp.tools.RenameSymbolTool;
 import me.naptila.recafmcp.mcp.tools.RunRecafScriptTool;
+import me.naptila.recafmcp.mcp.tools.SearchAnnotationsTool;
 import me.naptila.recafmcp.mcp.tools.SearchCodeTool;
 import me.naptila.recafmcp.mcp.tools.SearchInstructionsTool;
 import me.naptila.recafmcp.mcp.tools.SearchMembersTool;
+import me.naptila.recafmcp.mcp.tools.SearchNumbersTool;
 import me.naptila.recafmcp.mcp.tools.SearchStringsTool;
 import me.naptila.recafmcp.mcp.tools.SearchStructureTool;
+import me.naptila.recafmcp.mcp.tools.SetAndroidMemberAccessTool;
+import me.naptila.recafmcp.mcp.tools.SetClassAttributesTool;
+import me.naptila.recafmcp.mcp.tools.SetDecompilerTool;
+import me.naptila.recafmcp.mcp.tools.SetFieldConstantTool;
+import me.naptila.recafmcp.mcp.tools.SetMemberAccessTool;
 import me.naptila.recafmcp.mcp.tools.TransformWorkspaceTool;
+import me.naptila.recafmcp.mcp.tools.ValidateWorkspaceTool;
 import me.naptila.recafmcp.mcp.tools.WorkspaceInfoTool;
+import me.naptila.recafmcp.mcp.tools.WriteFileTool;
 import org.slf4j.Logger;
 import software.coley.recaf.analytics.logging.Logging;
 import software.coley.recaf.info.properties.builtin.InputFilePathProperty;
@@ -52,6 +84,7 @@ import software.coley.recaf.services.mapping.MappingListeners;
 import software.coley.recaf.services.mapping.aggregate.AggregateMappingManager;
 import software.coley.recaf.services.mapping.format.MappingFormatManager;
 import software.coley.recaf.services.search.SearchService;
+import software.coley.recaf.services.search.match.NumberPredicateProvider;
 import software.coley.recaf.services.search.match.StringPredicateProvider;
 import software.coley.recaf.services.script.ScriptEngine;
 import software.coley.recaf.services.transform.TransformationApplierService;
@@ -81,7 +114,7 @@ import java.util.concurrent.Executors;
 )
 public class RecafMCPPlugin implements Plugin {
     public static final String PLUGIN_ID = "me.naptila.recaf-mcp-plugin";
-    public static final String PLUGIN_VERSION = "1.1.1";
+    public static final String PLUGIN_VERSION = "1.3.0";
     public static final String PLUGIN_NAME = "Recaf MCP Plugin";
     public static final String PLUGIN_DESCRIPTION =
             "MCP server for autonomous Java reverse engineering via LLM agents";
@@ -99,6 +132,7 @@ public class RecafMCPPlugin implements Plugin {
     private final MappingFormatManager mappingFormatManager;
     private final SearchService searchService;
     private final StringPredicateProvider stringPredicateProvider;
+    private final NumberPredicateProvider numberPredicateProvider;
     private final TransformationApplierService transformationApplierService;
     private final ScriptEngine scriptEngine;
     private final ResourceImporterConfig resourceImporterConfig;
@@ -123,6 +157,7 @@ public class RecafMCPPlugin implements Plugin {
                           MappingFormatManager mappingFormatManager,
                           SearchService searchService,
                           StringPredicateProvider stringPredicateProvider,
+                          NumberPredicateProvider numberPredicateProvider,
                           TransformationApplierService transformationApplierService,
                           ScriptEngine scriptEngine,
                           ResourceImporterConfig resourceImporterConfig,
@@ -141,6 +176,7 @@ public class RecafMCPPlugin implements Plugin {
         this.mappingFormatManager = mappingFormatManager;
         this.searchService = searchService;
         this.stringPredicateProvider = stringPredicateProvider;
+        this.numberPredicateProvider = numberPredicateProvider;
         this.transformationApplierService = transformationApplierService;
         this.scriptEngine = scriptEngine;
         this.resourceImporterConfig = resourceImporterConfig;
@@ -191,8 +227,18 @@ public class RecafMCPPlugin implements Plugin {
             McpToolRegistry toolRegistry = new McpToolRegistry(health.getRecafRuntime().compatible() ? List.of(
                     new WorkspaceInfoTool(workspaceManager),
                     new ListClassesTool(workspaceManager),
+                    new GetClassInfoTool(workspaceManager),
+                    new ListMembersTool(workspaceManager),
+                    new GetInheritanceTool(workspaceManager, inheritanceGraphService),
+                    new ListDecompilersTool(decompilerManager),
+                    new SetDecompilerTool(decompilerManager),
                     new ListFilesTool(workspaceManager),
                     new ReadFileTool(workspaceManager),
+                    new WriteFileTool(workspaceManager),
+                    new RemoveFileTool(workspaceManager),
+                    new ListSupportingResourcesTool(workspaceManager),
+                    new AddSupportingResourceTool(workspaceManager, resourceImporter),
+                    new RemoveSupportingResourceTool(workspaceManager),
                     new DecompileClassTool(workspaceManager, decompilerManager),
                     new ExportDecompiledSourcesTool(workspaceManager, decompilerManager),
                     new SearchStringsTool(
@@ -211,6 +257,11 @@ public class RecafMCPPlugin implements Plugin {
                             stringPredicateProvider
                     ),
                     new SearchCodeTool(workspaceManager, decompilerManager),
+                    new SearchNumbersTool(
+                            workspaceManager,
+                            searchService,
+                            numberPredicateProvider
+                    ),
                     new SearchStructureTool(workspaceManager),
                     new RenameSymbolTool(
                             workspaceManager,
@@ -234,14 +285,35 @@ public class RecafMCPPlugin implements Plugin {
                             mappingFormatManager,
                             aggregateMappingManager
                     ),
+                    new RenamePackageTool(workspaceManager, mappingApplierService),
                     new CallGraphTool(workspaceManager, callGraphService),
                     new TransformWorkspaceTool(workspaceManager, transformationApplierService),
                     new PatchClassTool(workspaceManager, javacCompiler),
+                    new AddFieldTool(workspaceManager),
+                    new AddMethodTool(workspaceManager),
+                    new RemoveMemberTool(workspaceManager),
+                    new SetMemberAccessTool(workspaceManager),
+                    new RemoveClassTool(workspaceManager),
                     new GetMethodAssemblyTool(workspaceManager, assemblerPipelineManager),
                     new PatchInstructionsTool(workspaceManager, assemblerPipelineManager),
+                    new GetMethodBytecodeTool(workspaceManager),
                     new GetClassBytecodeTool(workspaceManager),
                     new GetRecafScriptHelpTool(),
-                    new RunRecafScriptTool(workspaceManager, scriptEngine)
+                    new RunRecafScriptTool(workspaceManager, scriptEngine),
+                    new AddClassTool(workspaceManager),
+                    new DuplicateClassTool(workspaceManager),
+                    new SetClassAttributesTool(workspaceManager),
+                    new SetFieldConstantTool(workspaceManager),
+                    new AddAnnotationTool(workspaceManager),
+                    new RemoveAnnotationTool(workspaceManager),
+                    new ListAnnotationsTool(workspaceManager),
+                    new SearchAnnotationsTool(workspaceManager),
+                    new AddAndroidMemberTool(workspaceManager),
+                    new RemoveAndroidMemberTool(workspaceManager),
+                    new SetAndroidMemberAccessTool(workspaceManager),
+                    new ListPackagesTool(workspaceManager),
+                    new ValidateWorkspaceTool(workspaceManager),
+                    new ExtractEntryTool(workspaceManager)
             ) : List.of(new GetRecafScriptHelpTool()));
             operationCoordinator = new WorkerOperationCoordinator();
             McpRequestHandler requestHandler = new McpRequestHandler(

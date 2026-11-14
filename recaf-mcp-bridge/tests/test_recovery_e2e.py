@@ -18,8 +18,8 @@ from test_stdio import read_message, write_message
 
 
 @pytest.mark.skipif(
-    "RECAF_MCP_TEST_RECAF_JAR" not in os.environ,
-    reason="installed Recaf integration not requested",
+    "RECAF_MCP_TEST_RECAF_JAR" not in os.environ or os.name == "nt",
+    reason="installed Recaf integration not requested, or POSIX permissions unavailable",
 )
 def test_failed_shutdown_save_is_authenticated_and_recovered(
     tmp_path: Path,
@@ -112,8 +112,8 @@ def test_failed_shutdown_save_is_authenticated_and_recovered(
 
 
 @pytest.mark.skipif(
-    "RECAF_MCP_TEST_RECAF_JAR" not in os.environ,
-    reason="installed Recaf integration not requested",
+    "RECAF_MCP_TEST_RECAF_JAR" not in os.environ or os.name == "nt",
+    reason="installed Recaf integration not requested, or SIGTERM unavailable",
 )
 def test_sigterm_saves_real_worker_before_bridge_exit(tmp_path: Path) -> None:
     input_path = Path(os.environ["RECAF_MCP_TEST_INPUT"]).resolve(strict=True)

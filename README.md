@@ -22,12 +22,13 @@ source checkout, modified Recaf build, or published Python package is needed.
 | Decompile | One class or all selected classes to a ZIP; CFR, Procyon, Vineflower, or another installed Recaf decompiler |
 | Search | Strings, JVM/DEX instructions, decompiled source, member declarations/references, call graphs |
 | Rename | Classes, methods, and fields; import/export seven Recaf mapping formats |
+| Author | Create and duplicate classes, edit class attributes, field constants, and annotations |
 | Patch JVM | Compile replacement Java source, run safe Recaf transforms, edit exact method instructions |
 | Analyze APK/DEX | Android classes, decoded binary XML, DEX strings/instructions/members/calls, reconstructed single-class DEX |
 | Automate | Compile and run version-matched Recaf Java scripts for custom deobfuscation |
 | Manage sessions | Multiple isolated Workers, JAR save/reopen, format-aware idle cleanup, cancellation, and recovery |
 
-All 27 tools are advertised before a target is opened, so clients do not need
+All 59 tools are advertised before a target is opened, so clients do not need
 dynamic tool-list support. The complete tool catalog is shown below.
 
 ## Requirements
@@ -36,9 +37,9 @@ dynamic tool-list support. The complete tool catalog is shown below.
   emits Java 22-compatible bytecode; `patch_class` requires a JDK with `javac`,
   not a JRE.
 - A Recaf 4 generic executable JAR, which bundles Recaf's runtime dependencies.
-  Version 1.1.1 targets [Recaf build `9090128`](https://github.com/Col-E/Recaf/commit/909012806d893a61f68e2a66e174618c50840343)
-  (2026-10-18) and its assembler/DEX APIs. Update older Recaf snapshots before
-  upgrading the plugin.
+  The plugin targets [Recaf build `9090128`](https://github.com/Col-E/Recaf/commit/909012806d893a61f68e2a66e174618c50840343)
+  and its assembler/DEX APIs. Update older Recaf snapshots before upgrading the
+  plugin.
 - Python 3.11 or newer.
 - [`uv`](https://docs.astral.sh/uv/) for the locked Bridge environment.
 
@@ -55,7 +56,7 @@ Recaf JAR; it rejects Workers whose revision differs from catalog discovery.
 ### Install from a Release (recommended)
 
 No source checkout or local build is required. Download the
-[`recaf-mcp-plugin-1.1.1.jar`](https://github.com/Naptila/recaf-mcp/releases/download/v1.1.1/recaf-mcp-plugin-1.1.1.jar)
+[`recaf-mcp-plugin-1.3.0.jar`](https://github.com/iseaprojects/recaf-mcp/releases/download/v1.3.0/recaf-mcp-plugin-1.3.0.jar)
 asset from the [latest GitHub Release](https://github.com/Naptila/recaf-mcp/releases/latest)
 and copy it into Recaf's plugin directory:
 
@@ -68,7 +69,7 @@ and copy it into Recaf's plugin directory:
 Install the cross-platform Bridge wheel directly from the same Release:
 
 ```bash
-uv tool install https://github.com/Naptila/recaf-mcp/releases/download/v1.1.1/recaf_mcp_bridge-1.1.1-py3-none-any.whl
+uv tool install https://github.com/iseaprojects/recaf-mcp/releases/download/v1.3.0/recaf_mcp_bridge-1.1.1-py3-none-any.whl
 ```
 
 This installs the `recaf-mcp-bridge` command without publishing the project to
@@ -77,7 +78,7 @@ PyPI.
 When upgrading, back up the old plugin JAR outside Recaf's plugin directory and
 keep exactly one `recaf-mcp-plugin*.jar` there. Reinstall the Bridge wheel with
 `uv tool install --force` followed by the URL above, then restart the MCP
-connection and reopen workspaces so both components use 1.1.1.
+connection and reopen workspaces after upgrading.
 
 ### Build from source
 
@@ -87,7 +88,7 @@ To build the plugin and install the Bridge from a checkout instead:
 cd /absolute/path/to/recaf-mcp/recaf-mcp-plugin
 ./gradlew clean build
 mkdir -p ~/.config/Recaf/plugins
-cp build/libs/recaf-mcp-plugin-1.1.1.jar ~/.config/Recaf/plugins/
+cp build/libs/recaf-mcp-plugin-1.3.0.jar ~/.config/Recaf/plugins/
 cd ..
 uv tool install ./recaf-mcp-bridge
 ```
@@ -251,8 +252,19 @@ by `recaf_open`.
 | --- | --- | --- |
 | `workspace_info` | Summarize the target | JVM, Android/DEX, and file counts |
 | `list_classes` | List classes | `scope`, `dex_name`, `filter`, pagination |
+| `list_packages` | Group classes into packages | `depth`, `filter`, direct and per-scope class counts |
+| `get_class_info` | Read structural class metadata | Superclass, interfaces, inner classes, annotations, member counts |
+| `list_members` | List declared members of one class | `kind`, name/descriptor filters, annotations, pagination |
+| `get_inheritance` | Read hierarchy relationships | Direct/transitive parents and children, assignable supertypes |
+| `list_decompilers` | List installed decompilers | JVM and Android names, versions, and defaults |
+| `set_decompiler` | Select the default decompiler | Session-scoped `name` and `target` (`jvm`/`android`) |
 | `list_files` | List non-class archive entries | Manifests, resources, configs, native libraries |
 | `read_file` | Read an archive entry | Text, decoded Android XML, or raw Base64 |
+| `write_file` | Add or replace an archive entry | UTF-8 text or Base64; classes are rejected |
+| `remove_file` | Delete an archive entry | Exact non-class path |
+| `list_supporting_resources` | List attached libraries | Index, path, class/file counts, internal resources |
+| `add_supporting_resource` | Attach a jar or class directory | Idempotent by canonical path |
+| `remove_supporting_resource` | Detach a supporting resource | Select by `index`, `path`, or `name` |
 | `decompile_class` | Decompile one class | Runtime `decompiler`, JVM/Android scope, paged source |
 | `export_sources` | Decompile selected classes to ZIP | `scope`, `filter`, `regex`, `decompiler`, `overwrite` |
 | `get_class_bytecode` | Read class bytes | Original JVM classfile or reconstructed single-class DEX |
@@ -265,7 +277,10 @@ by `recaf_open`.
 | `search_instructions` | Search JVM/DEX instructions | Fast whole-archive search; no decompilation |
 | `search_code` | Search decompiled source | Narrow with `filter`; explicit opt-in above 200 classes |
 | `search_members` | Find field/method declarations and references | Owner/name/descriptor, kind, result type |
+| `search_numbers` | Search numeric constants and operands | Equals, comparisons, range, or any-of; JVM/Android scope |
 | `search_structure` | Find classes by combined structure | Class/member names, access masks, descriptors, native opcodes |
+| `list_annotations` | List class and member annotations | `filter`, `include_members`, pagination |
+| `search_annotations` | Find annotations by type | Annotation descriptor, `target`, JVM/Android scope |
 | `call_graph` | Find callers and callees | Direction, depth, JVM/Android scope |
 
 `search_structure` uses Recaf's native JVM/DEX structural query engine without
@@ -280,13 +295,36 @@ include `class_scope` and `dex_name`; use `offset`/`limit` for stable pages.
 
 | Tool | Purpose | Key behavior |
 | --- | --- | --- |
+| `add_class` | Create a JVM class | Generated default constructor, supertype, interfaces, classfile version |
+| `duplicate_class` | Copy a class under a new name | Rewrites self references; JVM or Android/DEX scope |
+| `set_class_attributes` | Replace class-level attributes | Access, superclass, interfaces, signature, source file, version |
 | `rename_symbol` | Rename a class, method, or field | Descriptor-aware; JVM or Android |
+| `rename_package` | Rename a JVM package prefix | Rewrites references and reports renamed classes |
+| `add_field` | Add a field | Descriptor, access flags, optional constant value |
+| `add_method` | Add a method | Default-return stub body, or abstract/native |
+| `remove_member` | Remove a field or method | Exact name and descriptor |
+| `set_member_access` | Replace member modifiers | Complete flag set; `none` clears all flags |
+| `set_field_constant` | Set or clear a `ConstantValue` | Static final fields, JVM or Android/DEX |
+| `add_annotation` | Add a class or member annotation | `target`, `visible`, typed `elements`; JVM arrays, DEX primitives |
+| `remove_annotation` | Remove an annotation type | Clears every occurrence on the selected target |
+| `add_android_member` | Add a DEX field or method | Generated stub body; optional `static_value` |
+| `remove_android_member` | Remove a DEX field or method | Exact name and descriptor |
+| `set_android_member_access` | Replace DEX member modifiers | Remove and re-add keeps code, annotations, signature |
+| `remove_class` | Delete a class | JVM or Android/DEX scope |
 | `apply_mappings` | Import mappings | Enigma, Jadx, Proguard, Simple, SRG, Tiny v1/v2 |
 | `export_mappings` | Export accumulated mappings | Paged UTF-8 text with counts and SHA-256 |
 | `transform_workspace` | Run reviewed Recaf transforms | JVM only; typed `options`, ordered `phases`, `dry_run` |
 | `patch_class` | Compile replacement Java source | JVM only; preserves classfile target by default |
 | `get_method_assembly` | Read exact method instructions | Editable JVM or Dalvik Jasm; `scope` and exact `dex_name` |
+| `get_method_bytecode` | Render raw method instructions | JVM Textifier or Dalvik instruction tree |
 | `patch_instructions` | Assemble a modified JVM or Dalvik method | Complete assembly plus prior SHA-256; supports `dry_run` |
+
+`add_class` creates primary JVM classes only; use `run_recaf_script` to build a
+new DEX class. `set_class_attributes` replaces a JVM class access set, but the
+native DEX tree exposes no class-access setter, so a DEX `access` request is
+rejected with an error. Superclass, interfaces, signature, and source file edits
+do apply to DEX classes. Member access, member add/remove, field constants, and
+annotations are available natively for both formats.
 
 `transform_workspace` keeps its conservative metadata cleanup defaults. Extra
 constant/predicate/variable folding, static/call/`invokedynamic` inlining, long
@@ -296,6 +334,13 @@ for an ordered plan with separate aliases, options, and up to three passes per
 phase. The whole plan runs on a detached JVM snapshot; dry runs and failed
 plans leave the current workspace unchanged. See the [Bridge contract](recaf-mcp-bridge/README.md)
 for aliases, parameter ranges, phase results, and an example.
+
+### Validate and export
+
+| Tool | Purpose | Key behavior |
+| --- | --- | --- |
+| `validate_workspace` | Check primary classes | Parse failures, name mismatches, duplicate members, codeless methods |
+| `extract_entry` | Write one entry to disk | JVM classfile, single-class DEX, or raw file bytes; absolute `output_path` |
 
 ### Custom Recaf scripts
 
@@ -343,8 +388,12 @@ whether an LLM context compaction discarded the caller's cached body.
 | Decompile class / export source ZIP | Yes | Yes, through Android-to-JVM conversion |
 | Read bytecode | Original classfile | Reconstructed single-class DEX |
 | Rename / apply mappings | Persistent after save | Persistent after save |
+| Rename package | Yes | No |
+| Add/remove members or change access | Yes | No; use `patch_instructions` or scripts |
 | Patch Java source | Yes | No |
 | Patch method instructions | Yes | Yes, editable Dalvik Jasm |
+| Read raw method instructions | Yes | Yes |
+| Attach/remove supporting resources | Yes | Yes |
 | Transform workspace | Yes | No |
 | Save/rebuild archive | Yes | Yes; APK output is unsigned |
 
@@ -397,7 +446,7 @@ Run it against an explicit generic JAR from the Bridge directory:
 ```bash
 uv run --frozen python ../scripts/test_real_worker.py \
   --recaf-jar /absolute/path/to/recaf.jar \
-  --plugin-jar ../recaf-mcp-plugin/build/libs/recaf-mcp-plugin-1.1.1.jar
+  --plugin-jar ../recaf-mcp-plugin/build/libs/recaf-mcp-plugin-1.3.0.jar
 ```
 
 The runner discovers Worker identity automatically, copies its input to a

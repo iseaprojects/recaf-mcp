@@ -22,20 +22,21 @@ Recaf，也无需发布 Python 包。
 | 反编译 | 反编译单个类或将选定的所有类导出到 ZIP；支持 CFR、Procyon、Vineflower 或其他已安装的 Recaf 反编译器 |
 | 搜索 | 字符串、JVM/DEX 指令、反编译源码、成员声明/引用和调用图 |
 | 重命名 | 类、方法和字段；导入/导出 Recaf 支持的七种映射格式 |
+| 编写 | 创建和复制类，编辑类属性、字段常量和注解 |
 | 修改 JVM | 编译替换 Java 源码、运行安全的 Recaf 转换、编辑指定方法的指令 |
 | 分析 APK/DEX | Android 类、解码后的二进制 XML、DEX 字符串/指令/成员/调用，以及重建的单类 DEX |
 | 自动化 | 编译并运行与当前 Recaf 版本匹配的 Java 脚本，用于自定义反混淆 |
 | 会话管理 | 多个隔离 Worker、JAR 保存/重新打开、按格式处理空闲清理、取消和恢复 |
 
-全部 27 个工具都会在打开目标之前公布，因此客户端无需支持动态工具列表。完整工具目录见下文。
+全部 59 个工具都会在打开目标之前公布，因此客户端无需支持动态工具列表。完整工具目录见下文。
 
 ## 环境要求
 
 - JDK 25，用于仓库内置的 Gradle 工具链和 Worker 进程。插件生成兼容
   Java 22 的字节码；`patch_class` 需要包含 `javac` 的 JDK，不能使用 JRE。
 - Recaf 4 通用可执行 JAR，其中包含 Recaf 的运行时依赖。
-  1.1.1 适配 [Recaf 构建 `9090128`](https://github.com/Col-E/Recaf/commit/909012806d893a61f68e2a66e174618c50840343)
-  （2026-10-18）及其汇编器/DEX API。升级插件前，请先更新旧版 Recaf 快照。
+  插件适配 [Recaf 构建 `9090128`](https://github.com/Col-E/Recaf/commit/909012806d893a61f68e2a66e174618c50840343)
+  及其汇编器/DEX API。升级插件前，请先更新旧版 Recaf 快照。
 - Python 3.11 或更高版本。
 - [`uv`](https://docs.astral.sh/uv/)，用于桥接器的锁定依赖环境。
 
@@ -53,7 +54,7 @@ Worker 启动时会检查所需的 Jasm 和 DEX API，在会话就绪前拒绝�
 无需检出源码或在本地构建项目。从
 [最新 GitHub Release](https://github.com/Naptila/recaf-mcp/releases/latest)
 下载
-[`recaf-mcp-plugin-1.1.1.jar`](https://github.com/Naptila/recaf-mcp/releases/download/v1.1.1/recaf-mcp-plugin-1.1.1.jar)，
+[`recaf-mcp-plugin-1.3.0.jar`](https://github.com/iseaprojects/recaf-mcp/releases/download/v1.3.0/recaf-mcp-plugin-1.3.0.jar)，
 并将其复制到 Recaf 插件目录：
 
 | 平台 | Recaf 插件目录 |
@@ -65,14 +66,14 @@ Worker 启动时会检查所需的 Jasm 和 DEX API，在会话就绪前拒绝�
 直接从同一个 Release 安装跨平台 Bridge wheel：
 
 ```bash
-uv tool install https://github.com/Naptila/recaf-mcp/releases/download/v1.1.1/recaf_mcp_bridge-1.1.1-py3-none-any.whl
+uv tool install https://github.com/iseaprojects/recaf-mcp/releases/download/v1.3.0/recaf_mcp_bridge-1.1.1-py3-none-any.whl
 ```
 
 该命令会安装 `recaf-mcp-bridge`，项目本身无需发布到 PyPI。
 
 升级时，请将旧插件 JAR 备份到 Recaf 插件目录之外，目录内仅保留一个
 `recaf-mcp-plugin*.jar`。通过 `uv tool install --force` 加上面的 URL
-重新安装 Bridge wheel，再重启 MCP 连接并重新打开工作区，使两部分均使用 1.1.1。
+重新安装 Bridge wheel，再重启 MCP 连接并重新打开工作区。
 
 ### 从源码构建
 
@@ -82,7 +83,7 @@ uv tool install https://github.com/Naptila/recaf-mcp/releases/download/v1.1.1/re
 cd /absolute/path/to/recaf-mcp/recaf-mcp-plugin
 ./gradlew clean build
 mkdir -p ~/.config/Recaf/plugins
-cp build/libs/recaf-mcp-plugin-1.1.1.jar ~/.config/Recaf/plugins/
+cp build/libs/recaf-mcp-plugin-1.3.0.jar ~/.config/Recaf/plugins/
 cd ..
 uv tool install ./recaf-mcp-bridge
 ```
@@ -229,8 +230,19 @@ Android 保存及单类 DEX 编码还针对当前固定版本写入器遗漏的 
 | --- | --- | --- |
 | `workspace_info` | 汇总目标 | JVM、Android/DEX 和文件数量 |
 | `list_classes` | 列出类 | `scope`、`dex_name`、`filter`、分页 |
+| `list_packages` | 将类按包分组 | `depth`、`filter`、直接和按范围的类数量 |
+| `get_class_info` | 读取类结构元数据 | 父类、接口、内部类、注解和成员数量 |
+| `list_members` | 列出指定类的声明成员 | `kind`、名称/描述符过滤、注解、分页 |
+| `get_inheritance` | 读取继承关系 | 直接/传递父类与子类、可赋值超类型 |
+| `list_decompilers` | 列出已安装反编译器 | JVM 与 Android 名称、版本和默认值 |
+| `set_decompiler` | 选择默认反编译器 | 会话级 `name` 和 `target`（`jvm`/`android`） |
 | `list_files` | 列出非 class 归档条目 | Manifest、资源、配置和原生库 |
 | `read_file` | 读取归档条目 | 文本、解码后的 Android XML 或原始 Base64 |
+| `write_file` | 添加或替换归档条目 | UTF-8 文本或 Base64；拒绝 class |
+| `remove_file` | 删除归档条目 | 精确的非 class 路径 |
+| `list_supporting_resources` | 列出附加库 | 索引、路径、类/文件数量和内部资源 |
+| `add_supporting_resource` | 附加 jar 或 class 目录 | 按规范化路径幂等 |
+| `remove_supporting_resource` | 移除附加库 | 通过 `index`、`path` 或 `name` 选择 |
 | `decompile_class` | 反编译单个类 | 运行时选择 `decompiler`、JVM/Android 范围、分页源码 |
 | `export_sources` | 将选定类反编译到 ZIP | `scope`、`filter`、`regex`、`decompiler`、`overwrite` |
 | `get_class_bytecode` | 读取类字节码 | 原始 JVM classfile 或重建的单类 DEX |
@@ -243,7 +255,10 @@ Android 保存及单类 DEX 编码还针对当前固定版本写入器遗漏的 
 | `search_instructions` | 搜索 JVM/DEX 指令 | 快速搜索整个归档，无需反编译 |
 | `search_code` | 搜索反编译源码 | 使用 `filter` 缩小范围；超过 200 个类需明确允许 |
 | `search_members` | 查找字段/方法声明和引用 | 所有者、名称、描述符、种类和结果类型 |
+| `search_numbers` | 搜索数字常量和操作数 | 相等、比较、范围或任意值；支持 JVM/Android 范围 |
 | `search_structure` | 按组合结构查找类 | 类/成员名称、访问掩码、描述符、原生 opcode |
+| `list_annotations` | 列出类和成员注解 | `filter`、`include_members`、分页 |
+| `search_annotations` | 按类型查找注解 | 注解描述符、`target`、JVM/Android 范围 |
 | `call_graph` | 查找调用方和被调用方 | 方向、深度、JVM/Android 范围 |
 
 `search_structure` 直接使用 Recaf 的 JVM/DEX 结构查询引擎，无需反编译。
@@ -258,13 +273,35 @@ Android 保存及单类 DEX 编码还针对当前固定版本写入器遗漏的 
 
 | 工具 | 用途 | 关键行为 |
 | --- | --- | --- |
+| `add_class` | 创建 JVM 类 | 生成默认构造器、父类、接口和 classfile 版本 |
+| `duplicate_class` | 以新名称复制类 | 重写自身引用；支持 JVM 或 Android/DEX 范围 |
+| `set_class_attributes` | 替换类级属性 | 访问标志、父类、接口、签名、源文件和版本 |
 | `rename_symbol` | 重命名类、方法或字段 | 感知描述符；支持 JVM 或 Android |
+| `rename_package` | 重命名 JVM 包前缀 | 重写引用并报告已重命名的类 |
+| `add_field` | 添加字段 | 描述符、访问标志和可选常量值 |
+| `add_method` | 添加方法 | 默认返回值桩体，或 abstract/native |
+| `remove_member` | 移除字段或方法 | 精确名称和描述符 |
+| `set_member_access` | 替换成员修饰符 | 完整标志集合；`none` 清空 |
+| `set_field_constant` | 设置或清除 `ConstantValue` | static final 字段；JVM 或 Android/DEX |
+| `add_annotation` | 添加类或成员注解 | `target`、`visible`、类型化 `elements`；JVM 支持数组，DEX 仅原始值 |
+| `remove_annotation` | 移除某个注解类型 | 清除目标上的全部匹配项 |
+| `add_android_member` | 添加 DEX 字段或方法 | 生成桩体；可选 `static_value` |
+| `remove_android_member` | 移除 DEX 字段或方法 | 精确名称和描述符 |
+| `set_android_member_access` | 替换 DEX 成员修饰符 | 移除后重加，保留代码、注解和签名 |
+| `remove_class` | 删除类 | JVM 或 Android/DEX 范围 |
 | `apply_mappings` | 导入映射 | Enigma、Jadx、Proguard、Simple、SRG、Tiny v1/v2 |
 | `export_mappings` | 导出累计映射 | 分页 UTF-8 文本，包含数量和 SHA-256 |
 | `transform_workspace` | 运行已审核的 Recaf 转换 | 仅限 JVM；支持类型化 `options`、有序 `phases` 和 `dry_run` |
 | `patch_class` | 编译替换 Java 源码 | 仅限 JVM；默认保留 classfile 目标版本 |
 | `get_method_assembly` | 读取指定方法的准确指令 | 可编辑 JVM 或 Dalvik Jasm；支持 `scope` 和精确 `dex_name` |
+| `get_method_bytecode` | 渲染原始方法指令 | JVM Textifier 或 Dalvik 指令树 |
 | `patch_instructions` | 汇编修改后的 JVM 或 Dalvik 方法 | 完整汇编文本加原 SHA-256；支持 `dry_run` |
+
+`add_class` 仅创建主 JVM 类；如需新建 DEX 类请使用 `run_recaf_script`。
+`set_class_attributes` 可替换 JVM 类的访问标志，但原生 DEX 树不提供类访问
+标志的 setter，因此 DEX 的 `access` 请求会返回错误。父类、接口、签名和源文件
+修改对 DEX 类同样生效。成员访问标志、成员增删、字段常量和注解在两种格式下
+均原生支持。
 
 `transform_workspace` 保留保守的元数据清理默认集合。新增常量/谓词/变量折叠、
 静态值/调用结果/`invokedynamic` 内联、长元数据删除、异常处理合并和变量表规范化，
@@ -272,6 +309,13 @@ Android 保存及单类 DEX 编码还针对当前固定版本写入器遗漏的 
 指定有序计划，每阶段可独立设置别名、参数及最多三轮执行。整个计划在隔离的 JVM
 快照中运行，dry-run 或任何阶段失败均不改动当前工作区。别名、参数范围、阶段结果
 和示例见 [Bridge 契约](recaf-mcp-bridge/README.md)。
+
+### 校验与导出
+
+| 工具 | 用途 | 关键行为 |
+| --- | --- | --- |
+| `validate_workspace` | 检查主资源中的类 | 解析失败、名称不一致、重复成员、无代码方法 |
+| `extract_entry` | 将单个条目写入磁盘 | JVM classfile、单类 DEX 或原始文件字节；需绝对 `output_path` |
 
 ### 自定义 Recaf 脚本
 
@@ -317,8 +361,12 @@ Android bundle 事件。`get_recaf_script_help` 的 `workspace` 主题提供完�
 | 反编译类/导出源码 ZIP | 支持 | 支持，通过 Android 到 JVM 转换 |
 | 读取字节码 | 原始 classfile | 重建的单类 DEX |
 | 重命名/应用映射 | 保存后持久化 | 保存后持久化 |
+| 重命名包 | 支持 | 不支持 |
+| 添加/移除成员或修改访问权限 | 支持 | 不支持；请使用 `patch_instructions` 或脚本 |
 | 修改 Java 源码 | 支持 | 不支持 |
 | 修改方法指令 | 支持 | 支持，可编辑 Dalvik Jasm |
+| 读取原始方法指令 | 支持 | 支持 |
+| 附加/移除支持资源 | 支持 | 支持 |
 | 转换工作区 | 支持 | 不支持 |
 | 保存/重建归档 | 支持 | 支持；APK 输出未签名 |
 
@@ -367,7 +415,7 @@ uv run pytest -q
 ```bash
 uv run --frozen python ../scripts/test_real_worker.py \
   --recaf-jar /absolute/path/to/recaf.jar \
-  --plugin-jar ../recaf-mcp-plugin/build/libs/recaf-mcp-plugin-1.1.1.jar
+  --plugin-jar ../recaf-mcp-plugin/build/libs/recaf-mcp-plugin-1.3.0.jar
 ```
 
 运行器自动发现 Worker 身份，将输入复制到临时目录，生成小型多 DEX APK 和裸

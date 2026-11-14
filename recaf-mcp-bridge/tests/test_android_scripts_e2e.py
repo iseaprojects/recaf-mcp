@@ -162,7 +162,8 @@ def test_bundled_android_examples_and_wrapped_runtime_diagnostics(tmp_path: Path
             }))["guide"]
 
             def example(heading: str) -> str:
-                section = guide.split(f"### {heading}\n", 1)[1]
+                normalized = guide.replace("\r\n", "\n")
+                section = normalized.split(f"### {heading}\n", 1)[1]
                 match = re.search(r"```java\n(.*?)\n```", section, re.DOTALL)
                 assert match is not None
                 return match.group(1)

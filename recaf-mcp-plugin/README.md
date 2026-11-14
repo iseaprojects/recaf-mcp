@@ -23,7 +23,7 @@ target Java 22.
 boundaries. Its production output is:
 
 ```text
-build/libs/recaf-mcp-plugin-1.1.1.jar
+build/libs/recaf-mcp-plugin-1.3.0.jar
 ```
 
 The build checks the service entry and verifies that the plugin does not shade
@@ -132,6 +132,11 @@ never defines the Bridge-owned `database` property.
 - `workspace_info`: bounded primary/supporting resource summary.
 - `list_classes`: sorted primary JVM and/or Android names, 20-entry default
   pages capped at 500. Android entries retain their owning DEX name.
+- `list_packages`: primary classes grouped by package prefix. `depth` keeps the
+  first N segments (`0` keeps the full package), 50 default/1,000 maximum
+  pages, optional case-sensitive package filter, direct class counts per scope
+  and DEX name, and up to five sample classes per package.
+  `include_default_package` controls classes without a package.
 - `list_files`: sorted primary-resource non-class archive paths with file kind,
   byte size, extension/directory, Recaf text/charset metadata, and whether a
   textual representation is available. Android binary XML is identified as
@@ -188,6 +193,37 @@ never defines the Bridge-owned `database` property.
 - `rename_symbol`: exact JVM or Android class/member rename through Recaf's
   search and mapping services. Android requests accept DEX identity, select
   only declarations/referrers for bounded memory, and persist through APK/DEX save.
+- `add_class`: creates one primary JVM class from an internal name, with an
+  optional superclass (default `java/lang/Object`), interfaces, access set,
+  signature, and classfile version (default Java 8, minimum 45). It generates a
+  public default constructor and rejects malformed names or an existing class.
+  New DEX classes stay in `run_recaf_script`.
+- `duplicate_class`: copies one primary class under a new internal name and
+  rewrites self references, using `ClassRemapper` for JVM and the native DEX
+  remapper for Android. The destination must not already exist.
+- `set_class_attributes`: replaces a JVM class access set and optionally
+  rewrites the superclass, interfaces (`interfaces`, `add_interfaces`,
+  `remove_interfaces`), signature, source file, and classfile version. Android
+  scope accepts every attribute except `access`: the native DEX tree exposes no
+  class-access setter, so that request returns an error naming
+  `run_recaf_script`.
+- `set_field_constant`: sets or clears the `ConstantValue` of one exact field.
+  JVM scope writes the ASM field value; Android scope writes the native DEX
+  static value. Omitting `constant_value` clears it.
+- `add_annotation` and `remove_annotation`: add or remove one annotation on a
+  class, field, or exact member. `visible` selects runtime-visible or
+  runtime-invisible output, and `elements` accepts strings, numbers, and
+  booleans; JVM scope also accepts arrays. DEX scope rejects objects and arrays.
+  Adding a duplicate annotation type fails; removal reports how many occurrences
+  were cleared.
+- `add_android_member`: adds one field or method to an exact DEX class.
+  Methods receive a generated stub body (`return-void`, zero, wide zero, or
+  null) and fields accept an optional `static_value`.
+- `remove_android_member`: removes one exact field or method from a DEX class.
+- `set_android_member_access`: replaces the access flags of one exact DEX field
+  or method by rebuilding the member, preserving code, annotations, signatures,
+  parameter annotations, and default values. A codeless method cannot be made
+  concrete by an access change.
 - `apply_mappings`: inline mapping text parsed by Recaf in any installed
   text format. Its runtime enum currently exposes Enigma, Jadx (Legacy),
   Proguard, Simple, SRG, Tiny-V1, and Tiny-V2. It supports dry-run, optional
@@ -232,6 +268,17 @@ never defines the Bridge-owned `database` property.
   Stable class/domain/DEX ordering, 10 default/200 maximum page size, and a
   20,000-hit collection cap keep responses bounded; `collection_truncated`
   identifies a partial count. Hits preserve `class_scope` and `dex_name`.
+- `list_annotations`: class annotations by default, or class and member
+  annotations with `include_members=true`, in the selected primary JVM/Android
+  scope. The optional `filter` is a case-sensitive substring of the annotation
+  descriptor. Pages default to 50 entries and cap at 500, and each class reports
+  its annotation count plus up to three samples.
+- `search_annotations`: classes, fields, or methods annotated with a
+  case-sensitive descriptor substring. The optional `target` restricts results
+  to `class`, `field`, `method`, or `any`; `scope` and exact `dex_name` select
+  the backend. Pages default to 100 and cap at 1,000, with a 20,000-hit
+  collection cap. Hits preserve `class_scope`, `dex_name`, member identity, and
+  visibility.
 - `patch_class`: complete source compiled against the workspace; 750,000 source
   characters, 100 related outputs, 32 MiB output, and bounded diagnostics. It
   preserves the input classfile target by default. Legacy inputs below the
@@ -263,6 +310,18 @@ never defines the Bridge-owned `database` property.
   containing the selected class and explicitly reports `original_bytes=false`.
   Matching optional `if_sha256` omits Base64 and page fields while preserving
   format, identity, complete size, and hash metadata.
+- `validate_workspace`: read-only structural check over the selected primary
+  JVM/Android scope. JVM classes report bundle/classfile name mismatches, parse
+  failures, a missing superclass, duplicate fields or methods, and non-abstract
+  methods without code; DEX classes report definition gaps, name mismatches, a
+  missing superclass, interfaces without `abstract`, unusual DEX versions, and
+  codeless concrete methods. `max_issues` defaults to 100 and caps at 1,000; the
+  response reports per-code totals and whether the detail list was truncated.
+- `extract_entry`: writes one primary class or file entry to an absolute
+  destination. JVM classes emit their classfile, Android classes emit a
+  rebuilt single-class DEX, and other entries emit their raw bytes. It creates
+  parent directories, refuses to replace an existing file unless
+  `overwrite=true`, and returns the byte size and SHA-256.
 - `get_recaf_script_help`: bundled, version-matched Markdown guidance for
   shorthand/full-class scripts, primary workspace bundles, ASM, service
   injection, and general deobfuscation workflows. It does not require source

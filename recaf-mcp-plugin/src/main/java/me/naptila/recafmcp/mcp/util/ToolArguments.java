@@ -4,6 +4,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -72,5 +74,36 @@ public final class ToolArguments {
             throw new IllegalArgumentException(name + " must be a boolean");
         }
         return element.getAsBoolean();
+    }
+
+    public static List<String> optionalStringArray(JsonObject arguments, String name) {
+        JsonElement element = arguments.get(name);
+        if (element == null) {
+            return null;
+        }
+        if (!element.isJsonArray()) {
+            throw new IllegalArgumentException(name + " must be an array of strings");
+        }
+        List<String> values = new ArrayList<>();
+        for (JsonElement item : element.getAsJsonArray()) {
+            if (!item.isJsonPrimitive()
+                    || !item.getAsJsonPrimitive().isString()
+                    || item.getAsString().isBlank()) {
+                throw new IllegalArgumentException(name + " must contain nonblank strings");
+            }
+            values.add(item.getAsString());
+        }
+        return List.copyOf(values);
+    }
+
+    public static JsonObject optionalObject(JsonObject arguments, String name) {
+        JsonElement element = arguments.get(name);
+        if (element == null) {
+            return null;
+        }
+        if (!element.isJsonObject()) {
+            throw new IllegalArgumentException(name + " must be an object");
+        }
+        return element.getAsJsonObject();
     }
 }

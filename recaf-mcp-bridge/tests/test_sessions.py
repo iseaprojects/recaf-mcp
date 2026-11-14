@@ -38,7 +38,10 @@ def test_path_reservations_reject_aliases_and_cross_session_targets(
     input_one.write_bytes(b"one")
     input_two.write_bytes(b"two")
     alias = tmp_path / "input-alias.jar"
-    alias.symlink_to(input_one)
+    try:
+        alias.symlink_to(input_one)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlink privileges are unavailable")
 
     async def scenario() -> None:
         reservations = PathReservations()

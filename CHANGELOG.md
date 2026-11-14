@@ -1,5 +1,51 @@
 # Changelog
 
+## 1.3.0 — 2026-11-14
+
+- Expand the plugin catalog to 54 Worker tools (59 with the Bridge lifecycle
+  tools) by adding 14 tools. Existing search, patch, and script tools are
+  unchanged.
+- Add class authoring tools: `add_class` creates a primary JVM class with a
+  generated default constructor, supertype, interfaces, and classfile version;
+  `duplicate_class` copies a JVM or DEX class under a new name and rewrites its
+  self references.
+- Add class-level attribute editing with `set_class_attributes` for access
+  flags, superclass, interfaces (replace/add/remove), signature, source file,
+  and classfile version. `set_field_constant` sets or clears a field
+  `ConstantValue` for static final fields.
+- Add annotation editing on both formats: `add_annotation`,
+  `remove_annotation`, `list_annotations`, and `search_annotations` accept class,
+  field, or method targets, visibility, and typed element values.
+- Add native Android/DEX member editing: `add_android_member` with generated
+  stub bodies and optional `static_value`, `remove_android_member`, and
+  `set_android_member_access`, which removes and re-adds the member so code,
+  annotations, and signatures survive the access change.
+- Add `list_packages` for grouped class counts, `validate_workspace` for parse
+  failures, name mismatches, duplicate members, and codeless methods, and
+  `extract_entry` for writing a classfile, single-class DEX, or file entry to an
+  absolute path.
+- DEX class access flags cannot be replaced because the native DEX tree exposes
+  no class-access setter; `set_class_attributes` rejects that request and
+  directs callers to `run_recaf_script`. Superclass, interfaces, signature, and
+  source file edits still apply to DEX classes.
+
+## 1.2.0 — 2026-11-14
+
+- Expand the plugin catalog from 21 to 39 Worker tools (45 with Bridge
+  lifecycle tools). New read tools cover structural class metadata, member
+  listings, inheritance relationships, installed decompilers, and raw method
+  bytecode.
+- Add workspace mutation tools for adding and replacing archive entries,
+  deleting files and classes, attaching and detaching supporting resources, and
+  renaming JVM package prefixes.
+- Add JVM member editing through ASM: add fields with optional constant values,
+  add methods with generated default-return bodies, remove members, and replace
+  member access flags. Android/DEX member edits still use
+  `patch_instructions` or `run_recaf_script`.
+- Add `search_numbers` for equality, comparison, range, and any-of numeric
+  searches across JVM and Android scopes.
+- Add `set_decompiler` to switch the session default JVM or Android decompiler.
+
 ## 1.1.0 — 2026-10-18
 
 - Save APK and standalone DEX workspaces in their original format, including
