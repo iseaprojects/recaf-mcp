@@ -2,6 +2,11 @@
 
 [English](README.md) | [简体中文](README-ZH.md)
 
+> 本仓库是 [Naptila/recaf-mcp](https://github.com/Naptila/recaf-mcp) 的 fork，
+> 上游项目仍为原仓库。本 fork 保留原始 MIT 许可证与署名，并以自己的 Release
+> 发布 [CHANGELOG.md](CHANGELOG.md) 中列出的新增功能。适合上游的改动将以 Pull
+> Request 的形式回馈上游。
+
 `recaf-mcp` 通过模型上下文协议（MCP）提供无头
 [Recaf](https://github.com/Col-E/Recaf) 分析与补丁能力。Python stdio
 桥接器负责管理相互隔离的 Recaf JVM，Java 插件负责执行实际分析。

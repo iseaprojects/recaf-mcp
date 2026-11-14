@@ -2,6 +2,13 @@
 
 [English](README.md) | [简体中文](README-ZH.md)
 
+> This repository is a fork of
+> [Naptila/recaf-mcp](https://github.com/Naptila/recaf-mcp), which remains the
+> upstream project. The fork keeps the original MIT license and credits, and
+> publishes its own releases with the additions described in
+> [CHANGELOG.md](CHANGELOG.md). Contributions that belong to everyone are meant
+> to go back upstream as pull requests.
+
 `recaf-mcp` exposes headless [Recaf](https://github.com/Col-E/Recaf) analysis
 and patching through the Model Context Protocol (MCP). A Python stdio Bridge
 manages isolated Recaf JVMs; a Java plugin performs the actual analysis.
